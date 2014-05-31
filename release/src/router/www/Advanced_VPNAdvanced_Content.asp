@@ -1126,7 +1126,7 @@ function cal_panel_block(){
 									</tr>
 
 									<tr>
-										<th><#Port_Num#><br><i><#Setting_factorydefault_value#> : 1194</i></th>
+										<th>Port<br><i><#Setting_factorydefault_value#> : 1194</i></th>
 										<td>
 											<input type="text" maxlength="5" class="input_6_table" name="vpn_server_port" onKeyPress="return is_number(this,event);" onblur="validate_number_range(this, 1, 65535)" value="<% nvram_get("vpn_server_port"); %>" >
 										</td>
@@ -1323,8 +1323,8 @@ function cal_panel_block(){
 									</thead>
 
 									<tr>
-										<th width="36%"><#PPPConnection_UserName_itemname#></th>
-										<th width="20%"><#IPConnection_ExternalIPAddress_itemname#></th>
+										<th width="36%">Common Name</th>
+										<th width="20%">Subnet</th>
 										<th width="20%"><#IPConnection_x_ExternalSubnetMask_itemname#></th>
 										<th width="12%">Push</th>
 										<th width="12%"><#list_add_delete#></th>

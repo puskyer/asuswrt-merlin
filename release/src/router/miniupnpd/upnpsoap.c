@@ -1,4 +1,4 @@
-/* $Id: upnpsoap.c,v 1.122 2014/03/10 11:04:53 nanard Exp $ */
+/* $Id: upnpsoap.c,v 1.123 2014/04/09 12:39:54 nanard Exp $ */
 /* MiniUPnP project
  * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
  * (c) 2006-2014 Thomas Bernard
@@ -772,12 +772,23 @@ DeletePortMappingRange(struct upnphttp * h, const char * action)
 		return;
 	}
 
+	syslog(LOG_INFO, "%s: deleting external ports: %hu-%hu, protocol: %s",
+	       action, startport, endport, protocol);
+
 	port_list = upnp_get_portmappings_in_range(startport, endport,
 	                                           protocol, &number);
+	if(number == 0)
+	{
+		SoapError(h, 730, "PortMappingNotFound");
+		ClearNameValueList(&data);
+		return;
+	}
+
 	for(i = 0; i < number; i++)
 	{
 		r = upnp_delete_redirection(port_list[i], protocol);
-		/* TODO : check return value for errors */
+		syslog(LOG_INFO, "%s: deleting external port: %hu, protocol: %s: %s",
+		       action, port_list[i], protocol, r < 0 ? "failed" : "ok");
 	}
 	free(port_list);
 	BuildSendAndCloseSoapResp(h, resp, sizeof(resp)-1);
@@ -1494,7 +1505,7 @@ AddPinhole(struct upnphttp * h, const char * action)
 	 * InternalClient and Protocol are the same than an existing pinhole,
 	 * but LeaseTime is different, the device MUST extend the existing
 	 * pinhole's lease time and return the UniqueID of the existing pinhole. */
-	r = upnp_add_inboundpinhole(rem_host, rport, int_ip, iport, proto, ltime, &uid);
+	r = upnp_add_inboundpinhole(rem_host, rport, int_ip, iport, proto, "IGD2 pinhole", ltime, &uid);
 
 	switch(r)
 	{
@@ -1559,7 +1570,9 @@ UpdatePinhole(struct upnphttp * h, const char * action)
 	 * it doesn't have access to, because of its public access */
 	n = upnp_get_pinhole_info(uid, NULL, 0, NULL,
 	                          iaddr, sizeof(iaddr), &iport,
-	                          NULL, NULL, NULL);
+	                          NULL, /* proto */
+	                          NULL, 0, /* desc, desclen */
+	                          NULL, NULL);
 	if (n >= 0)
 	{
 		if(PinholeVerification(h, iaddr, iport) <= 0)
@@ -1681,7 +1694,9 @@ DeletePinhole(struct upnphttp * h, const char * action)
 	 * it doesn't have access to, because of its public access */
 	n = upnp_get_pinhole_info(uid, NULL, 0, NULL,
 	                          iaddr, sizeof(iaddr), &iport,
-	                          &proto, &leasetime, NULL);
+	                          &proto,
+	                          NULL, 0, /* desc, desclen */
+	                          &leasetime, NULL);
 	if (n >= 0)
 	{
 		if(PinholeVerification(h, iaddr, iport) <= 0)
@@ -1748,7 +1763,9 @@ CheckPinholeWorking(struct upnphttp * h, const char * action)
 	r = upnp_get_pinhole_info(uid,
 	                          NULL, 0, NULL,
 	                          iaddr, sizeof(iaddr), &iport,
-	                          NULL, NULL, &packets);
+	                          NULL, /* proto */
+	                          NULL, 0, /* desc, desclen */
+	                          NULL, &packets);
 	if (r >= 0)
 	{
 		if(PinholeVerification(h, iaddr, iport) <= 0)
@@ -1807,7 +1824,9 @@ GetPinholePackets(struct upnphttp * h, const char * action)
 	 * it doesn't have access to, because of its public access */
 	n = upnp_get_pinhole_info(uid, NULL, 0, NULL,
 	                          iaddr, sizeof(iaddr), &iport,
-	                          &proto, &leasetime, &packets);
+	                          &proto,
+	                          NULL, 0, /* desc, desclen */
+	                          &leasetime, &packets);
 	if (n >= 0)
 	{
 		if(PinholeVerification(h, iaddr, iport)<=0)
@@ -1827,6 +1846,104 @@ GetPinholePackets(struct upnphttp * h, const char * action)
 }
 #endif
 
+#ifdef ENABLE_DP_SERVICE
+static void
+SendSetupMessage(struct upnphttp * h, const char * action)
+{
+	static const char resp[] =
+		"<u:%sResponse "
+		"xmlns:u=\"%s\">"
+		"<NewOutMessage>%s</NewOutMessage>"
+		"</u:%sResponse>";
+	char body[1024];
+	int bodylen;
+	struct NameValueParserData data;
+	const char * ProtocolType;	/* string */
+	const char * InMessage;		/* base64 */
+	const char * OutMessage = "";	/* base64 */
+
+	ParseNameValue(h->req_buf + h->req_contentoff, h->req_contentlen, &data);
+	ProtocolType = GetValueFromNameValueList(&data, "NewProtocolType");	/* string */
+	InMessage = GetValueFromNameValueList(&data, "NewInMessage");	/* base64 */
+
+	if(ProtocolType == NULL || InMessage == NULL)
+	{
+		ClearNameValueList(&data);
+		SoapError(h, 402, "Invalid Args");
+		return;
+	}
+	/*if(strcmp(ProtocolType, "DeviceProtection:1") != 0)*/
+	if(strcmp(ProtocolType, "WPS") != 0)
+	{
+		ClearNameValueList(&data);
+		SoapError(h, 600, "Argument Value Invalid"); /* 703 ? */
+		return;
+	}
+	/* TODO : put here code for WPS */
+
+	bodylen = snprintf(body, sizeof(body), resp,
+	                   action, "urn:schemas-upnp-org:service:DeviceProtection:1",
+	                   OutMessage, action);
+	BuildSendAndCloseSoapResp(h, body, bodylen);
+	ClearNameValueList(&data);
+}
+
+static void
+GetSupportedProtocols(struct upnphttp * h, const char * action)
+{
+	static const char resp[] =
+		"<u:%sResponse "
+		"xmlns:u=\"%s\">"
+		"<NewProtocolList>%s</NewProtocolList>"
+		"</u:%sResponse>";
+	char body[1024];
+	int bodylen;
+	const char * ProtocolList =
+		"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+		"<SupportedProtocols xmlns=\"urn:schemas-upnp-org:gw:DeviceProtection\""
+		" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""
+		" xsi:schemaLocation=\"urn:schemas-upnp-org:gw:DeviceProtection"
+		" http://www.upnp.org/schemas/gw/DeviceProtection-v1.xsd\">"
+		"<Introduction><Name>WPS</Name></Introduction>"
+		"<Login><Name>PKCS5</Name></Login>"
+		"</SupportedProtocols>";
+
+	bodylen = snprintf(body, sizeof(body), resp,
+	                   action, "urn:schemas-upnp-org:service:DeviceProtection:1",
+	                   ProtocolList, action);
+	BuildSendAndCloseSoapResp(h, body, bodylen);
+}
+
+static void
+GetAssignedRoles(struct upnphttp * h, const char * action)
+{
+	static const char resp[] =
+		"<u:%sResponse "
+		"xmlns:u=\"%s\">"
+		"<NewRoleList>%s</NewRoleList>"
+		"</u:%sResponse>";
+	char body[1024];
+	int bodylen;
+	const char * RoleList = "Public"; /* list of roles separated by spaces */
+
+#ifdef ENABLE_HTTPS
+	if(h->ssl != NULL) {
+		/* we should get the Roles of the session (based on client certificate) */
+		X509 * peercert;
+		peercert = SSL_get_peer_certificate(h->ssl);
+		if(peercert != NULL) {
+			RoleList = "Admin Basic";
+			X509_free(peercert);
+		}
+	}
+#endif
+
+	bodylen = snprintf(body, sizeof(body), resp,
+	                   action, "urn:schemas-upnp-org:service:DeviceProtection:1",
+	                   RoleList, action);
+	BuildSendAndCloseSoapResp(h, body, bodylen);
+}
+#endif
 
 /* Windows XP as client send the following requests :
  * GetConnectionTypeInfo
@@ -1885,6 +2002,12 @@ soapMethods[] =
 	{ "CheckPinholeWorking", CheckPinholeWorking},	/* Optional */
 	{ "GetPinholePackets", GetPinholePackets},	/* Required */
 #endif
+#ifdef ENABLE_DP_SERVICE
+	/* DeviceProtection */
+	{ "SendSetupMessage", SendSetupMessage},	/* Required */
+	{ "GetSupportedProtocols", GetSupportedProtocols},	/* Required */
+	{ "GetAssignedRoles", GetAssignedRoles},	/* Required */
+#endif
 	{ 0, 0 }
 };
 
@@ -1910,7 +2033,7 @@ ExecuteSoapAction(struct upnphttp * h, const char * action, int n)
 		while(soapMethods[i].methodName)
 		{
 			len = strlen(soapMethods[i].methodName);
-			if(strncmp(p, soapMethods[i].methodName, len) == 0)
+			if((len == methodlen) && memcmp(p, soapMethods[i].methodName, len) == 0)
 			{
 #ifdef DEBUG
 				syslog(LOG_DEBUG, "Remote Call of SoapMethod '%s'\n",

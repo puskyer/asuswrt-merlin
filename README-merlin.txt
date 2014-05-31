@@ -1,5 +1,5 @@
-Asuswrt-Merlin - build 374.41 (18-Apr-2014)
-===========================================
+Asuswrt-Merlin - build 374.43 (xx-xxx-2014)
+=============================================
 
 About
 -----
@@ -508,8 +508,8 @@ security/parental filtering.  This can be done globally, or on a
 per device basis.  Each of them can have a different type of filtering 
 applied.  For example, you can have your LAN use OpenDNS's server to 
 provide basic filtering, but force your children's devices to use 
-Norton Connect Safe's DNS server that filters out malicious, 
-adult, and general mature content.
+Yandex's family DNS server that filters out malicious and adult
+content.
 
 If using a global filter, then specific devices can be told to 
 bypass the global filter, by creating a client rule for these, 
@@ -572,6 +572,66 @@ https://github.com/RMerl/asuswrt-merlin
 
 History
 -------
+374.43-alpha (xx-xxx-2014)
+   - CHANGED: dnsmasq option 252 now defaults to an empty string,
+              to silence broken clients such as Win7.
+              Important: if you were previously using a customized
+              252 reply (to use with a valid wpad/pac file), you 
+              will need to use a postconf script to change the
+              default config instead of appending your own
+              config.
+              If you use DNS-based WPAD setting, you will need
+              to remove the 252 option using postconf, as IE will
+              not query for the DNS entry if there is a 252
+              option through DHCP, even if it fails to connect to it.
+
+   - CHANGED: Updated miniupnpd to 1.8.20140523.
+   - FIXED: Media server page wouldn't let you enable the iTunes
+            server unless you also enabled DLNA (Asus bug)
+   - FIXED: Restricted guests still had access to the router (Asus
+            bug introduced in GPL 4887)
+   - FIXED: 6in4 traffic wasn't bypassing CTF if dualwan mode was
+            either disabled or set to failover mode
+   - FIXED: Single character workgroups were rejected as invalid
+            (Asus bug)
+   - FIXED: Networks with SSIDs containing single quotes
+            would break the client list (Asus bug)
+   - FIXED: Traffic Monitor results are wrong on PPPoE connections
+            (Asus bug) (Patch by pinwing, additional debugging 
+            by fantom1)
+
+
+374.42_2 (16-May-2014)
+   - FIXED: Time Machine support (AC56, Ac68)
+
+
+374.42 (9-May-2014)
+   - NEW: Merged with Asus's 374_5656 GPL.
+   - NEW: Added Comodo Secure DNS to supported DNSFilter services
+   - FIXED: Download2 folder wasn't selectable anymore on the
+            Media Server page.
+   - FIXED: Pass correct valid and preferred lifetime to radvd when
+            using DHCPv6-PD (Patch by pinwing)
+   - FIXED: IPv6 connectivity could be lost after 1-2 hours due
+            to the time shift caused by NTP at boot time
+            (Patch by pinwing)
+   - FIXED: Various IPv6 connectivity issues related to services
+            being (re)started at the wrong time, or twice.
+            (Patch by pinwing)
+   - FIXED: Build system would sometime try to use the local system's
+            header/libs - use a pkg-config wrapper to avoid this
+            issue (Patch by ppuryear)
+   - FIXED: Erratic 5G led blinking behaviour as the watchdog's software-
+            based blinking was constantly writing to the wireless chip's 
+            registers for led control. (AC68)
+   - FIXED: LEDs weren't all turning back on when coming out of
+            Stealth Mode (AC56)
+   - CHANGED: Make the router use dnsmasq for internal name
+              resolution rather than directly using the WAN DNS.
+   - CHANGED: Upgraded OpenVPN to 2.3.4.
+   - CHANGED: Upgraded miniupnpd to 1.8.20140422 (PCP-related fixes)
+
+
 374.41 (18-Apr-2014)
    - NEW: Merged with Asus's 374_5047 GPL.  Notable changes:
        * Fixed RT-AC68U random reboots

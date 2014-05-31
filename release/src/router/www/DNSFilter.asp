@@ -44,6 +44,7 @@ var clients_info = getclients();
 var dnsfilter_rule_list = '<% nvram_get("dnsfilter_rulelist"); %>'.replace(/&#60/g, "<");
 var dnsfilter_rule_list_row = dnsfilter_rule_list.split('<');
 
+
 function initial(){
 	show_menu();
 	show_footer();
@@ -131,6 +132,7 @@ function gen_modeselect(name, value, onchange){
 	code +='<option value="4"'+(value == 4 ? "selected" : "")+'>Norton Children</option>';
 	code +='<option value="5"'+(value == 5 ? "selected" : "")+'>Yandex Safe</option>';
 	code +='<option value="6"'+(value == 6 ? "selected" : "")+'>Yandex Family</option>';
+	code +='<option value="12"'+(value == 12? "selected" : "")+'>Comodo Secure DNS</option>';
 	code +='<option value="8"'+(value == 8 ? "selected" : "")+'>Custom 1</option>';
 	code +='<option value="9"'+(value == 9 ? "selected" : "")+'>Custom 2</option>';
 	code +='<option value="10"'+(value == 10 ? "selected" : "")+'>Custom 3</option>';
@@ -140,6 +142,7 @@ function gen_modeselect(name, value, onchange){
 
 function gen_mainTable(){
 	var code = "";
+
 	code +='<table width="100%" border="1" cellspacing="0" cellpadding="4" align="center" class="FormTable_table" id="mainTable_table">';
 	code +='<thead><tr><td colspan="4"><#ConnectedClient#>&nbsp;(<#List_limit#>&nbsp;64)</td></tr></thead>';
 	code +='<tr><th width="40%"><#ParentalCtrl_username#></th>';
@@ -365,6 +368,8 @@ function changeRow_main(r){
 								<ul><li>Safe = Malicious content<li>Family = Malicious + Sexual content<li>Children = Malicious + Sexual + Mature content</ul>
 								<li><a target="_blank" style="font-weight: bolder; cursor:pointer;text-decoration: underline;" href="http://dns.yandex.com"><#YandexDNS#></a>
 								<ul><li>Safe = Malicious content<li>Family = Malicious + Sexual content</ul>
+								<li><a target="_blank" style="font-weight: bolder; cursor:pointer;text-decoration: underline;" href="http://www.comodo.com/secure-dns/">Comodo Secure DNS</a>
+								<ul><li>Protects against malicious content</ul>
 							</ul>
 							<br>"No Filtering" will disable/bypass the filter, and "Router" will force clients to use the DNS provided
 							    by the router's DHCP server (or, the router itself if it's not defined).
@@ -418,6 +423,7 @@ function changeRow_main(r){
 							<option value="4" <% nvram_match("dnsfilter_mode", "4", "selected"); %>>Norton Children</option>
 							<option value="5" <% nvram_match("dnsfilter_mode", "5", "selected"); %>>Yandex Safe</option>
 							<option value="6" <% nvram_match("dnsfilter_mode", "6", "selected"); %>>Yandex Family</option>
+							<option value="12" <% nvram_match("dnsfilter_mode", "12", "selected"); %>>Comodo Secure DNS</option>
 							<option value="8" <% nvram_match("dnsfilter_mode", "8", "selected"); %>>Custom 1</option>
 							<option value="9" <% nvram_match("dnsfilter_mode", "9", "selected"); %>>Custom 2</option>
 							<option value="10" <% nvram_match("dnsfilter_mode", "10", "selected"); %>>Custom 3</option>
