@@ -1,4 +1,4 @@
-Asuswrt-Merlin - build 374.43 (xx-xxx-2014)
+Asuswrt-Merlin - build 374.44 (xx-xxxx-2014)
 =============================================
 
 About
@@ -35,6 +35,7 @@ Supported devices are:
  * RT-AC66U
  * RT-AC56U
  * RT-AC68U
+ * RT-AC87U (Experimental)
 
 NOTE: all the "R" versions (for example RT-N66R) are the same as their 
 "U" counterparts, they are just different packages aimed at large 
@@ -48,11 +49,10 @@ Here is a list of features that Asuswrt-merlin brings over the original
 firmware:
 
 System:
-   - Based on 3.0.0.4.374_5047 sources (from RT-AC68U) from Asus
+   - Based on 3.0.0.4.376_1088 sources (from RT-AC87U) from Asus
    - Various bugfixes and optimizations
    - Some components were updated to newer versions, for improved
      stability and security
-   - Persistent JFFS partition
    - User scripts that run on specific events
    - Cron jobs
    - Ability to customize the config files used by the router services
@@ -82,7 +82,7 @@ Networking:
      RT-N16)
    - Netfilter ipset module, for efficient blacklist implemetnation
    - Configurable min/max UPNP ports
-   - IPSec kernel support
+   - IPSec kernel support (MIPS devices only)
    - DNS-based Filtering, can be applied globally or per client
 
 Web interface:
@@ -115,6 +115,7 @@ integrated/enabled in the official firmware:
   by Asus)
 - OpenVPN client and server
 - Configurable IPv6 firewall
+- Persistent JFFS partition
 
 
 Installation
@@ -162,8 +163,8 @@ I do not recommend doing frequent writes to this area, as it will
 prematuraly wear out the flash storage.  This is a good place to put 
 files that are written once like scripts or kernel modules, or that 
 rarely get written to (like once a day).  Storing files that constantly 
-get written to (like logfiles) is NOT recommended - use a USB disk for 
-that.
+get written to (like very busy logfiles) is NOT recommended - use a 
+USB disk for that.
 
 
 
@@ -572,7 +573,53 @@ https://github.com/RMerl/asuswrt-merlin
 
 History
 -------
-374.43-alpha (xx-xxx-2014)
+376.44 (xx-xxx-2014)
+   IMPORTANT: Make a backup of your JFFS partition if upgrading
+              an RT-AC56U or RT-AC68U!  The partition layout
+              has been changed.
+
+   - NEW: Merged with Asus's 376_1088 GPL (internal).
+          Summary of changes:
+            * New networkmap, lets users edit device names,
+              assign icons to devices, etc...
+            * Reworked IPv6 support
+            * Fix for Traffic Monitoring (replaces our own fix)
+            * And a lot more
+  - NEW: Added experimental support for RT-AC87U (still
+         work in progress - Stealth Mode not finished yet)
+  - CHANGED: The JFFS partition on ARM devices now uses
+             Asus's code, which means the whole unused space
+             is now used for the JFFS partition.
+             (AC56, AC68)
+  - CHANGED: Download Master packages are no longer included
+             in the firmware on AC56/AC68 devices due to lack of
+             space.  This simply means that on first install,
+             they will be downloaded from Asus's servers instead
+             of copied from flash - it might slow down the
+             initial install, however everything will work
+             the same afterward. AC87 is fine due to its
+             larger rootfs partition. (AC56, AC68)
+
+  - REMOVED: IPSEC support removed from ARM devices, as it's
+             not compatible with the new DPI kernel modules.
+             The option remains available in the build
+             environment if anyone wishes to create their
+             own IPSEC-enabled build, however they must ensure
+             that they disable the BWDPI option. (AC56, AC68)
+  - REMOVED: Reverted various IPv6-related patches as they
+             conflicted with Asus's own changes.  These might
+             make it back at a later time if deemed
+             necessary.
+
+
+374.43_2 (7-June-2014)
+   - FIXED: NTFS disks couldn't be mounted (Paragon driver not
+            loading due to a kernel change) (AC56, AC68)
+
+
+374.43 (6-June-2014)
+   - NEW: User-configurable refresh period to trigger a DDNS
+          update after a certain number of days.
    - CHANGED: dnsmasq option 252 now defaults to an empty string,
               to silence broken clients such as Win7.
               Important: if you were previously using a customized
@@ -586,12 +633,17 @@ History
               option through DHCP, even if it fails to connect to it.
 
    - CHANGED: Updated miniupnpd to 1.8.20140523.
+   - CHANGED: Updated openssl to 1.0.0m.
+   - CHANGED: More backports from OpenSSL 1.0.2, improving SHA
+              performance on ARM routers.
+   - CHANGED: The JFFS2 partition is now disabled by default after
+              a factory default reset.
    - FIXED: Media server page wouldn't let you enable the iTunes
             server unless you also enabled DLNA (Asus bug)
    - FIXED: Restricted guests still had access to the router (Asus
             bug introduced in GPL 4887)
    - FIXED: 6in4 traffic wasn't bypassing CTF if dualwan mode was
-            either disabled or set to failover mode
+            either disabled or set to failover mode (AC56/AC68)
    - FIXED: Single character workgroups were rejected as invalid
             (Asus bug)
    - FIXED: Networks with SSIDs containing single quotes
@@ -599,10 +651,12 @@ History
    - FIXED: Traffic Monitor results are wrong on PPPoE connections
             (Asus bug) (Patch by pinwing, additional debugging 
             by fantom1)
+   - FIXED: Crash if entering close to 64 MACs plus their names on
+            the MAC filter page.
 
 
 374.42_2 (16-May-2014)
-   - FIXED: Time Machine support (AC56, Ac68)
+   - FIXED: Time Machine support (AC56, AC68)
 
 
 374.42 (9-May-2014)
@@ -722,8 +776,8 @@ History
    - FIXED: reg_mode was being enforced to "h" (EU region) or "off"
             (others) since GPL 4422.  We now stick again to what's 
             set in the webui by the end user.
-  - FIXED: Allow LAN traffic while dualwan mode is set to lb (issue
-           caused by the default policy fix in beta 1)
+   - FIXED: Allow LAN traffic while dualwan mode is set to lb (issue
+            caused by the default policy fix in beta 1)
 
 
 374.40 Beta 1 (1-March-2014)

@@ -79,7 +79,7 @@ function update_temperatures(){
 			if (band5g_support) {
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz:</b> <span>" + curr_coreTmp_5_raw + "</span>";
 			}
-			if ((based_modelid == "RT-AC56U") || (based_modelid == "RT-AC68U")) {
+			if ((based_modelid == "RT-AC56U") || (based_modelid == "RT-AC68U") || (based_modelid == "RT-AC87U")) {
 				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span>" + curr_coreTmp_cpu +"&deg;C</span>";
 			}
 			$("temp_td").innerHTML = code;
@@ -97,7 +97,7 @@ function hwaccel_state(){
 		else {
 			code += " <i> - incompatible with:<span>  ";	// Two trailing spaces
 			if ('<% nvram_get("cstats_enable"); %>' == '1') code += 'IPTraffic, ';
-			if ('<% nvram_get("qos_enable"); %>' == '1') code += 'QoS, ';
+			if (('<% nvram_get("qos_enable"); %>' == '1') && ('<% nvram_get("qos_type"); %>' == '0')) code += 'QoS, ';
 			if ('<% nvram_get("sw_mode"); %>' == '2') code += 'Repeater mode, ';
 			if ('<% nvram_get("ctf_disable_modem"); %>' == '1') code += 'USB modem, ';
 
