@@ -123,11 +123,6 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 
 		} else if(strcmp(type,"cpu.freq") == 0) {
 			tmp = nvram_get("clkfreq");
-
-#ifdef RTCONFIG_TURBO
-			if (nvram_get_int("btn_turbo"))	
-				strcpy(tmp, "1000,0,0");	// RT-AC68U Turbo mode enabled = 1000 MHz
-#endif
 			if (tmp)
 				sscanf(tmp,"%[^,]s", result);
 
@@ -329,9 +324,16 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				for (j=0; (j < len); j++) {
 					if (buffer[j] == '\n') buffer[j] = '>';
 				}
-				strncpy(result, buffer, sizeof result);
+#ifdef RTCONFIG_QTN
+				j = GetPhyStatus_qtn();
+				snprintf(result, sizeof result, (j > 0 ? "%sPort 5: %dFD enabled stp: none vlan: 1 jumbo: off mac: 00:00:00:00:00:00>" :
+							 "%sPort 5: DOWN enabled stp: none vlan: 1 jumbo: off mac: 00:00:00:00:00:00>"),
+							  buffer, j);
+#else
+                                strncpy(result, buffer, sizeof result);
+#endif
+                                free(buffer);
 
-				free(buffer);
 			}
 			unlink("/tmp/output.txt");
 		} else {
@@ -354,6 +356,34 @@ unsigned int get_qtn_temperature(void)
         if (qcsapi_get_temperature_info(&temp_external, &temp_internal) >= 0)
 		return temp_internal / 1000000.0f;
 
+	return 0;
+}
+
+int GetPhyStatus_qtn(void)
+{
+	int ret;
+
+	if (!rpc_qtn_ready()) {
+		return -1;
+	}
+	ret = qcsapi_wifi_run_script("set_test_mode", "get_eth_1000m");
+	if (ret < 0) {
+		ret = qcsapi_wifi_run_script("set_test_mode", "get_eth_100m");
+		if (ret < 0) {
+			ret = qcsapi_wifi_run_script("set_test_mode", "get_eth_10m");
+			if (ret < 0) {
+				// fprintf(stderr, "ATE command error\n");
+				return 0;
+			}else{
+				return 10;
+			}
+		}else{
+			return 100;
+		}
+		return -1;
+	}else{
+		return 1000;
+	}
 	return 0;
 }
 #endif
@@ -390,6 +420,9 @@ unsigned int get_wifi_clients(int radio, int querytype)
 	struct maclist *clientlist;
 	int max_sta_count, maclist_size;
 	int val, count = 0;
+#ifdef RTCONFIG_QTN
+	qcsapi_unsigned_int association_count = 0;
+#endif
 
 	if (radio == 2) {
 		name = "eth1";
@@ -398,6 +431,23 @@ unsigned int get_wifi_clients(int radio, int querytype)
 	} else {
 		return 0;
 	}
+
+#ifdef RTCONFIG_QTN
+	if (radio == 5) {
+
+		if (nvram_match("wl1_radio", "0"))
+			return -1;	// Best way I can find to check if it's disabled
+
+		if (!rpc_qtn_ready())
+			return -1;
+
+		if (querytype == SI_WL_QUERY_ASSOC) {
+			if (qcsapi_wifi_get_count_associations("wifi0", &association_count) >= 0)
+				return association_count;
+		}
+		return -1;	// All other queries aren't supported by QTN
+	}
+#endif
 
 	wl_ioctl(name, WLC_GET_RADIO, &val, sizeof(val));
 	if (val == 1)

@@ -24,7 +24,7 @@ p{
 <script language="JavaScript" type="text/javascript" src="/detect.js"></script>
 <script language="JavaScript" type="text/javascript" src="/tmhist.js"></script>
 <script language="JavaScript" type="text/javascript" src="/tmmenu.js"></script>
-<script language="JavaScript" type="text/javascript" src="/nameresolv.js"></script>
+<script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/jquery.xdomainajax.js"></script>
 <script>
@@ -47,6 +47,10 @@ overlib.isOut = true;
 function initial(){
 	show_menu();
 	if (!band5g_support) $("wifi5_clients_tr").style.display = "none";
+	if (based_modelid == "RT-AC87U") {
+		$("wifi5_clients_tr").style.display = "none";
+		$("wifi5_clients_tr_qtn").style.display = "";
+	}
 	showbootTime();
 
 	if (odmpid != "")
@@ -65,6 +69,7 @@ function initial(){
 	update_temperatures();
 	hwaccel_state();
 	show_etherstate();
+	updateClientList();
 }
 
 function update_temperatures(){
@@ -142,10 +147,8 @@ function show_etherstate(){
 	var entry;
 
 	var t = etherstate.split('>');
-
 	for (var i = 0; i < t.length; ++i) {
 		var line = t[i].split(/[\s]+/);
-
 		if (line[11])
 			devicemac = line[11].toUpperCase();
 		else
@@ -166,13 +169,8 @@ function show_etherstate(){
 			} else {
 				overlib_str = "<p><#MAC_Address#>:</p>" + devicemac;
 
-				// Walk down arp cache and retrieve from hostname cache
-				for (var j = 0; j < arplist.length; ++j) {
-					if (arplist[j][3].toUpperCase() == devicemac) {
-						hostname = hostnamecache[arplist[j][0]];
-						break;
-					}
-				}
+				if (clientList[devicemac])
+					hostname = clientList[devicemac].name;
 
 				if ((hostname != "") && (typeof hostname !== 'undefined')) {
 					devicename = '<span class="ClientName" onclick="oui_query(\'' + devicemac +'\');;overlib_str_tmp=\''+ overlib_str +'\';return overlib(\''+ overlib_str +'\');" onmouseout="nd();" style="cursor:pointer; text-decoration:underline;">'+ hostname +'</span>';
@@ -183,15 +181,22 @@ function show_etherstate(){
 			tmpPort = line[1].replace(":","");
 
 			if (tmpPort == "8") {		// CPU Port
-				break;
+				continue;
 			} else if (based_modelid == "RT-AC56U") {
 				tmpPort++;		// Port starts at 0
 				if (tmpPort == "5") tmpPort = 0;	// Last port is WAN
-			}                                                                                                                                                         
+			} else if (based_modelid == "RT-AC87U") {
+				if (tmpPort == "4")
+					continue;	// This is the internal LAN port
+				if (tmpPort == "5") {
+					tmpPort = "4";	// This is the LAN 4 port from QTN
+					devicename = "&lt;unknown&gt;";
+				}
+			}
 			if (tmpPort == "0") {
 				port = "WAN";
 			} else {
-				if (based_modelid == "RT-N16") tmpPort = 5 - tmpPort;
+				if ((based_modelid == "RT-N16") || (based_modelid == "RT-AC87U"))  tmpPort = 5 - tmpPort;
 				port = "LAN "+tmpPort;
 			}
 			entry = '<tr><td>' + port + '</td><td>' + (line[7] & 0xFFF) + '</td><td><span>' + state2 + '</span></td>';
@@ -205,8 +210,23 @@ function show_etherstate(){
 	}
 	code += code_ports + '</table>';
 	$("etherstate_td").innerHTML = code;
+}
 
-	if (hostnamecache['ready'] == 0) setTimeout(show_etherstate, 500);
+function updateClientList(e){
+	$j.ajax({
+		url: '/update_clients.asp',
+		dataType: 'script', 
+		error: function(xhr) {
+			setTimeout("updateClientList();", 1000);
+		},
+		success: function(response){
+			if(isJsonChanged(originData, originDataTmp)){
+				show_etherstate();
+			}
+
+			setTimeout("updateClientList();", 3000);
+		}
+	});
 }
 
 </script>
@@ -399,6 +419,12 @@ function show_etherstate(){
 							Associated: <span><% sysinfo("conn.wifi.5.assoc"); %></span>&nbsp;&nbsp;-&nbsp;&nbsp;
 							Authorized: <span><% sysinfo("conn.wifi.5.autho"); %></span>&nbsp;&nbsp;-&nbsp;&nbsp;
 							Authenticated: <span><% sysinfo("conn.wifi.5.authe"); %></span>
+						</td>
+					</tr>
+					<tr id="wifi5_clients_tr_qtn" style="display:none;">
+						<th>Wireless clients (5 GHz)</th>
+						<td>
+                                                        Associated: <span><% sysinfo("conn.wifi.5.assoc"); %></span>
 						</td>
 					</tr>
 				</table>

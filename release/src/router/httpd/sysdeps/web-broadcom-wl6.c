@@ -1307,9 +1307,7 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	int ii, jj;
 	char *arplist = NULL, *arplistptr;
 	char *leaselist = NULL, *leaselistptr;
-#ifdef RTCONFIG_DNSMASQ
 	char hostnameentry[16];
-#endif
 	char ipentry[40], macentry[18];
 	int found;
 	char rxrate[12], txrate[12];
@@ -1324,7 +1322,9 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	if (is_psta(1 - unit))
 	{
 		ret += websWrite(wp, "%s radio is disabled\n",
-			nvram_match(strcat_r(prefix, "nband", tmp), "1") ? "5 GHz" : "2.4 GHz");
+			(wl_control_channel(unit) > 0) ?
+			((wl_control_channel(unit) > CH_MAX_2G_CHANNEL) ? "5 GHz" : "2.4 GHz") :
+			(nvram_match(strcat_r(prefix, "nband", tmp), "1") ? "5 GHz" : "2.4 GHz"));
 		return ret;
 	}
 #endif
@@ -1365,7 +1365,9 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	if (val)
 	{
 		ret += websWrite(wp, "%s radio is disabled\n",
-			nvram_match(strcat_r(prefix, "nband", tmp), "1") ? "5 GHz" : "2.4 GHz");
+			(wl_control_channel(unit) > 0) ?
+			((wl_control_channel(unit) > CH_MAX_2G_CHANNEL) ? "5 GHz" : "2.4 GHz") :
+			(nvram_match(strcat_r(prefix, "nband", tmp), "1") ? "5 GHz" : "2.4 GHz"));
 		return ret;
 	}
 
@@ -1460,9 +1462,7 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	arplist = read_whole_file("/proc/net/arp");
 	/* Obtain lease list - we still need the arp list for
 	   cases where a device uses a static IP rather than DHCP */
-#ifdef RTCONFIG_DNSMASQ
 	leaselist = read_whole_file("/var/lib/misc/dnsmasq.leases");
-#endif
 
 	ret += websWrite(wp, "\n");
 #ifdef RTCONFIG_QTN
@@ -1502,7 +1502,6 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			ret += websWrite(wp, "%-16s", (found ? ipentry : ""));
 		}
 
-#ifdef RTCONFIG_DNSMASQ
 		// Retrieve hostname from dnsmasq leases
 		if (leaselist) {
 			leaselistptr = leaselist;
@@ -1519,7 +1518,6 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 			ret += websWrite(wp, "%-15s ", (found ? hostnameentry : ""));
 		}
-#endif
 
 // RSSI
 		memcpy(&scb_val.ea, &auth->ea[i], ETHER_ADDR_LEN);
@@ -1636,7 +1634,6 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 					ret += websWrite(wp, "%-16s", (found ? ipentry : ""));
 				}
 
-#ifdef RTCONFIG_DNSMASQ
 				// Retrieve hostname from dnsmasq leases
 				if (leaselist) {
 					leaselistptr = leaselist;
@@ -1653,7 +1650,6 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 					ret += websWrite(wp, "%-15s ", (found ? hostnameentry : ""));
 				}
-#endif
 
 // RSSI
 				memcpy(&scb_val.ea, &auth->ea[ii], ETHER_ADDR_LEN);
@@ -1765,9 +1761,35 @@ wl_extent_channel(int unit)
 	wl_bss_info_107_t *old_bi;
 	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
 	char *name;
+#ifdef RTCONFIG_QTN
+	qcsapi_unsigned_int bw;
+#endif
 
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+        snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+        name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+
+	if (unit == 1) {
+#ifdef RTCONFIG_QTN
+		if (rpc_qcsapi_get_bw(&bw) >= 0) {
+			return bw;
+		} else {
+			return 0;
+		}
+#else
+		if ((ret = wl_ioctl(name, WLC_GET_BSSID, &bssid, ETHER_ADDR_LEN)) == 0) {
+			/* The adapter is associated. */
+			*(uint32*)buf = htod32(WLC_IOCTL_MAXLEN);
+			if ((ret = wl_ioctl(name, WLC_GET_BSS_INFO, buf, WLC_IOCTL_MAXLEN)) < 0)
+				return 0;
+			bi = (wl_bss_info_t*)(buf + 4);
+
+			return bw_chspec_to_mhz(bi->chanspec);
+		} else {
+			return 0;
+		}
+#endif
+
+	}
 
 	if ((ret = wl_ioctl(name, WLC_GET_BSSID, &bssid, ETHER_ADDR_LEN)) == 0) {
 		/* The adapter is associated. */
@@ -1810,6 +1832,19 @@ wl_control_channel(int unit)
 	wl_bss_info_107_t *old_bi;
 	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
 	char *name;
+#ifdef RTCONFIG_QTN
+	qcsapi_unsigned_int p_channel;
+#endif
+
+#ifdef RTCONFIG_QTN
+	if (unit == 1) {
+		if (rpc_qcsapi_get_channel(&p_channel) >= 0) {
+			return p_channel;
+		} else {
+			return 0;
+		}
+	}
+#endif
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
@@ -3527,12 +3562,16 @@ int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv) {
 
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
 #ifdef RTCONFIG_QTN
-		if (unit != 0)
-		{
-			if (rpc_qtn_ready())
-			ret += ej_wl_sta_list_5g(eid, wp, argc, argv);
+		if (unit) {
+			if (rpc_qtn_ready()){
+				if (firstRow == 1)
+					firstRow = 0;
+				else
+					ret += websWrite(wp, ", ");
+				ret += ej_wl_sta_list_5g(eid, wp, argc, argv);
+			}
+			return ret;
 		}
-		return ret;
 #endif
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 		name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
