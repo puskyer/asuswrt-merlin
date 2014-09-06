@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml"> 
 <html xmlns:v>
 <head>
-<meta http-equiv="X-UA-Compatible" content="IE=EmulateIE7"/>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta HTTP-EQUIV="Pragma" CONTENT="no-cache">
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
@@ -596,7 +596,7 @@ function check_openvpn_conflict(){		//if conflict with LAN ip & DHCP ip pool & s
 		for(var i = 1; i < staticclist_row.length; i++){
 			var static_subnet ="";
 			var static_end ="";					
-			var static_ip = staticclist_row[i].split('>')[1];
+			var static_ip = staticclist_row[i].split('&#62')[1];
 			static_subnet = static_ip.split(".")[0]+"."+static_ip.split(".")[1]+"."+static_ip.split(".")[2]+".";
 			static_end = parseInt(static_ip.split(".")[3]);
 			if(static_subnet != openvpn_clients_start_subnet){
@@ -1216,6 +1216,15 @@ function cal_panel_block(){
 												</select>
 										</td>
 									</tr>
+									<tr id="client_unit">
+										<th>Select server instance</th>
+										<td>
+											<select name="vpn_server_unit" class="input_option" onChange="change_vpn_unit(this.value);">
+												<option value="1" <% nvram_match("vpn_server_unit","1","selected"); %> >Server 1</option>
+												<option value="2" <% nvram_match("vpn_server_unit","2","selected"); %> >Server 2</option>
+											</select>
+										</td>
+									</tr>
 
 								</table>
 
@@ -1226,15 +1235,6 @@ function cal_panel_block(){
 									</tr>
 									</thead>
 
-									<tr id="client_unit">
-										<th>Select server instance</th>
-										<td>
-											<select name="vpn_server_unit" class="input_option" onChange="change_vpn_unit(this.value);">
-												<option value="1" <% nvram_match("vpn_server_unit","1","selected"); %> >Server 1</option>
-												<option value="2" <% nvram_match("vpn_server_unit","2","selected"); %> >Server 2</option>
-											</select>
-			   							</td>
-									</tr>
 									<tr>
 										<th><#vpn_openvpn_interface#></th>
 										<td>

@@ -7,7 +7,7 @@
 	ASUSGATE_note7 : "If you are experiencing any DSL related issues or have any comments / suggestions, please feel free to inform our support team.",
 	JS_validclientname : "Client device name only accept alphanumeric characters, under line and dash symbol. The first character cannot be dash \"-\" or under line \"_\".",
 	ASUSGATE_act_feedback : "Feedback now",
-	intelligence_type_desc : "Intelligence QoS type supports you to modify APPs category priority based on router stream. QoS type switching will only keep priority configuration for each client",
+	intelligence_type_desc : "Adaptive QoS type supports you to modify APPs category priority based on router stream. QoS type switching will only keep priority configuration for each client",
 	traditional_type_desc : "Traditional QoS type offers you advanced configure item including port, protocol and transferred. QoS type switching will only keep priority configuration for each client."
 };
 var clicked_help_string = "<#Help_init_word1#> <a class=\"hintstyle\" style=\"background-color:#7aa3bd\"><#Help_init_word2#></a> <#Help_init_word3#>";
@@ -162,7 +162,7 @@ function overHint(itemNum){
 	if(itemNum == 22)		
 		statusmenu += "<span>Enable Intruder Prevention to prevent cracker invasion via vulnerability of router or device software.</span>";
 	if(itemNum == 21)		
-		statusmenu += "<span>Enable Malicious site blocking to restricts access to known malicious websites.</span>";
+		statusmenu += "<span>Restricts access to known malicious websites in Trend Micro’s database for always-up-to-date protection.</span>";
 	if(itemNum == 20)		
 		statusmenu += "<span>Disable guest login for Network Place Share to avoid unauthorized user have chance to access your data.</span>";
 	if(itemNum == 19)		
@@ -193,7 +193,7 @@ function overHint(itemNum){
 			lineDesc = "Link up";
 		else if(wan_line_state == "wait for init")
 			lineDesc = "Wait for init";
-		else if(wan_line_state == "init")
+		else if(wan_line_state == "init" || wan_line_state == "initializing")
 			lineDesc = "Initializing";
 		else
 			lineDesc = "Link down";
@@ -214,7 +214,7 @@ function overHint(itemNum){
 			if ((extent_chan_arr[0] == 0) || (extent_chan_arr[0] == undefined) || (extent_chan_arr[0] == control_chan_arr[0]))
 				wifiDesc += "Channel " + control_chan_arr[0];
 			else
-				wifiDesc += "Channels "+ low_channel(control_chan_arr[0],extent_chan_arr[0]) + "+" + high_channel(control_chan_arr[0],extent_chan_arr[0]);
+				wifiDesc += "Channel "+ low_channel(control_chan_arr[0],extent_chan_arr[0]) + "+" + high_channel(control_chan_arr[0],extent_chan_arr[0]);
 		} else {
 			wifiDesc = "<b>2.4G:</b> <#btn_Disabled#>";
 		}
@@ -725,7 +725,7 @@ if (olNs4) {
 if (olIe4) {
 	var agent = navigator.userAgent;
 	if (/MSIE/.test(agent)) {
-		var versNum = parseFloat(agent.match(/MSIE[ ](\d\.\d+)\.*/i)[1]);
+		var versNum = parseFloat(agent.match(/MSIE[ ](\d+\.\d+)\.*/i)[1]);
 		if (versNum >= 5){
 			olIe5=true;
 			olIe55=(versNum>=5.5&&!olOp) ? true : false;

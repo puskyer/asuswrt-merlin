@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
-<meta http-equiv="X-UA-Compatible" content="IE=EmulateIE7"/>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta HTTP-EQUIV="Pragma" CONTENT="no-cache">
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
@@ -110,7 +110,7 @@ function initial() {
 	if (document.form.usb_idle_exclude.value.indexOf("i") != -1)
 		document.form.usb_idle_exclude_i.checked = true;
 
-	if ((productid == "RT-AC56U") || (productid == "RT-AC68U"))
+	if ((productid == "RT-AC56U") || (productid == "RT-AC68U") || (productid == "RT-AC87U"))
 		$("ct_established_default").innerHTML = "Default: 432000 (5 days)";
 
 	document.aidiskForm.protocol.value = PROTOCOL;

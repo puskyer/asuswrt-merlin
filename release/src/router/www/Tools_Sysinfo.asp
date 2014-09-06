@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
-<meta http-equiv="X-UA-Compatible" content="IE=EmulateIE7"/>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta HTTP-EQUIV="Pragma" CONTENT="no-cache">
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
@@ -38,6 +38,7 @@ hwacc_force = "<% nvram_get("ctf_disable_force"); %>";
 arplist = [<% get_arp_table(); %>];
 etherstate = "<% sysinfo("ethernet"); %>";
 odmpid = "<% nvram_get("odmpid");%>";
+ctf_fa = "<% nvram_get("ctf_fa_mode"); %>";
 
 var $j = jQuery.noConflict();
 
@@ -113,7 +114,14 @@ function hwaccel_state(){
 			code = code.slice(0,-2) + "</span></>";
 		}
 	} else if (hwacc == "0") {
-		code = "<span>Enabled</span>";
+		code = "<span>Enabled";
+		if (ctf_fa != "") {
+                        if (ctf_fa != "0")
+                                code += " (CTF + FA)";
+                        else
+                                code += " (CTF only)";
+                }
+		code += "</span>";
 	} else {
 		code = "<span>N/A</span>";
 	}
@@ -190,7 +198,7 @@ function show_etherstate(){
 					continue;	// This is the internal LAN port
 				if (tmpPort == "5") {
 					tmpPort = "4";	// This is the LAN 4 port from QTN
-					devicename = "&lt;unknown&gt;";
+					devicename = '<span class="ClientName">&lt;unknown&gt;</span>';
 				}
 			}
 			if (tmpPort == "0") {

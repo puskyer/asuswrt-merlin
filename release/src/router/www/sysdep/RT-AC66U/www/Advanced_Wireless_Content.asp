@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
-<meta http-equiv="X-UA-Compatible" content="IE=EmulateIE7"/>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta HTTP-EQUIV="Pragma" CONTENT="no-cache">
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
@@ -266,7 +266,6 @@ function applyRule(){
 		}
 	
 		showLoading();
-		
 		if(based_modelid == "RT-AC87U" && "<% nvram_get("wl_unit"); %>" == "1")
 			stopFlag = '0';
 			
@@ -434,10 +433,16 @@ function regen_5G_mode(obj,flag){
 		if(based_modelid == "RT-AC87U"){
 			obj.options[0] = new Option("<#Auto#>", 0);
 			obj.options[1] = new Option("N only", 1);
-			
-		}else{
+		}
+		else if(based_modelid == "DSL-AC68U" || based_modelid == "RT-AC68U" || based_modelid == "RT-AC56U" || based_modelid == "RT-AC53U"){
 			obj.options[0] = new Option("<#Auto#>", 0);
-			obj.options[1] = new Option("N + AC", 1);
+			obj.options[1] = new Option("N only", 1);
+			obj.options[2] = new Option("N/AC mixed", 8);
+			obj.options[3] = new Option("Legacy", 2);
+		}
+		else{
+			obj.options[0] = new Option("<#Auto#>", 0);
+			obj.options[1] = new Option("N only", 1);
 			obj.options[2] = new Option("Legacy", 2);
 		}
 	}
@@ -497,6 +502,7 @@ function check_WPS(){
 		<td>
 			<div class="drword" id="drword"><#Main_alert_proceeding_desc4#> <#Main_alert_proceeding_desc1#>...
 				<br/>
+				<div id="disconnect_hint" style="display:none;">This may interrupt your internet connection.</div>
 				<br/>
 		    </div>
 			<div id="wireless_client_detect" style="margin-left:10px;position:absolute;display:none">
