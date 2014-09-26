@@ -109,13 +109,16 @@ int init_gpio(void)
 	/* led output */
 	for(i = 0; i < ASIZE(led_list); i++)
 	{
-#ifdef RTN14U
-		if (!strcmp(led_list[i],"led_2g_gpio"))
-			continue;
-#endif
 		use_gpio = nvram_get_int(led_list[i]);
+
 		if((gpio_pin = use_gpio & 0xff) == 0xff)
 			continue;
+
+#if defined(RTCONFIG_RALINK_MT7620)
+		if(gpio_pin == 72)	//skip 2g wifi led NOT to be gpio LED
+			continue;
+#endif
+
 		disable = (use_gpio&GPIO_ACTIVE_LOW)==0 ? 0: 1;
 		gpio_dir(gpio_pin, GPIO_DIR_OUT);
 		set_gpio(gpio_pin, disable);
@@ -334,7 +337,7 @@ int led_control(int which, int mode)
 				else if (mode == LED_OFF)
 					eval("wl", "-i", "eth1", "leddc", "1");
 				use_gpio = 0xff;
-			} else if (model == MODEL_RTAC56U) {
+			} else if ((model == MODEL_RTAC56U) || (model == MODEL_RTAC56S)) {
 				if (mode == LED_ON)
 					eval("wl", "-i", "eth1", "ledbh", "3", "7");
 				else if (mode == LED_OFF)
@@ -367,7 +370,7 @@ int led_control(int which, int mode)
                                 else if (mode == LED_OFF)
                                         eval("wl", "-i", "eth2", "leddc", "1");
 				use_gpio = 0xff;
-			} else if ((model == MODEL_RTAC66U) || (model == MODEL_RTAC56U)) {
+			} else if ((model == MODEL_RTAC66U) || (model == MODEL_RTAC56U) || (model == MODEL_RTAC56S)) {
 				if (mode == LED_ON)
 					nvram_set("led_5g", "1");
 				else if (mode == LED_OFF)

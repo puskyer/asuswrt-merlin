@@ -299,11 +299,6 @@ void start_usb(void)
 #endif
 			}
 #endif
-#ifdef RTCONFIG_EXFAT
-			if(nvram_get_int("usb_fs_exfat")){
-				modprobe("texfat");
-			}
-#endif
 		}
 #endif
 
@@ -358,6 +353,7 @@ void start_usb(void)
 		modprobe("cdc_wdm");
 		modprobe("qmi_wwan");
 		modprobe("cdc_mbim");
+		eval("insmod", "gobi");
 #endif
 	}
 }
@@ -368,6 +364,7 @@ void remove_usb_modem_modules(void)
 #ifdef RTCONFIG_USB_BECEEM
 	modprobe_r("drxvi314");
 #endif
+	eval("rmmod", "gobi");
 	modprobe_r("cdc_mbim");
 	modprobe_r("qmi_wwan");
 	modprobe_r("cdc_wdm");
@@ -430,9 +427,6 @@ void remove_usb_storage_module(void)
 	modprobe_r("jnl");
 #endif
 #endif
-#endif
-#ifdef RTCONFIG_EXFAT
-	modprobe_r("texfat");
 #endif
 	modprobe_r("fuse");
 	sleep(1);
@@ -505,7 +499,7 @@ void stop_usb_program(int mode)
 #endif
 
 #if defined(RTCONFIG_APP_PREINSTALLED) || defined(RTCONFIG_APP_NETINSTALLED)
-#if defined(RTCONFIG_APP_PREINSTALLED) && defined(RTCONFIG_CLOUDSYNC)
+#if (defined(RTCONFIG_APP_PREINSTALLED) || defined(RTCONFIG_APP_NOLOCALDM)) && defined(RTCONFIG_CLOUDSYNC)
 	if(pids("inotify") || pids("asuswebstorage") || pids("webdav_client") || pids("dropbox_client") || pids("ftpclient") || pids("sambaclient")){
 		_dprintf("%s: stop_cloudsync.\n", __FUNCTION__);
 		stop_cloudsync(-1);
@@ -812,19 +806,6 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 			}
 #endif
 
-#ifdef RTCONFIG_EXFAT
-			if(ret != 0 && !strncmp(type, "exfat", 5)){
-				sprintf(options + strlen(options), ",iostreaming" + (options[0] ? 0 : 1));
-
-				if(nvram_invmatch("usb_exfat_opt", ""))
-					sprintf(options + strlen(options), "%s%s", options[0] ? "," : "", nvram_safe_get("usb_exfat_opt"));
-
-				if(nvram_get_int("usb_fs_exfat")){
-					ret = eval("mount", "-t", "texfat", "-o", options, mnt_dev, mnt_dir);
-				}
-			}
-#endif
-
 			if (ret != 0){ /* give it another try - guess fs */
 				TRACE_PT("give it another try - guess fs.\n");
 #ifndef RTCONFIG_BCMARM
@@ -993,7 +974,7 @@ int umount_mountpoint(struct mntent *mnt, uint flags)
 	//run_userfile(mnt->mnt_dir, ".autostop", mnt->mnt_dir, 5);
 	//run_nvscript("script_autostop", mnt->mnt_dir, 5);
 #if defined(RTCONFIG_APP_PREINSTALLED) || defined(RTCONFIG_APP_NETINSTALLED)
-#if defined(RTCONFIG_APP_PREINSTALLED) && defined(RTCONFIG_CLOUDSYNC)
+#if (defined(RTCONFIG_APP_PREINSTALLED) || defined(RTCONFIG_APP_NOLOCALDM)) && defined(RTCONFIG_CLOUDSYNC)
 	char word[PATH_MAX], *next_word;
 	char *b, *nvp, *nv;
 	int type = 0, enable = 0;
@@ -1318,7 +1299,7 @@ done:
 
 		run_custom_script_blocking("post-mount", mountpoint);
 
-#if defined(RTCONFIG_APP_PREINSTALLED) && defined(RTCONFIG_CLOUDSYNC)
+#if (defined(RTCONFIG_APP_PREINSTALLED) || defined(RTCONFIG_APP_NOLOCALDM)) && defined(RTCONFIG_CLOUDSYNC)
 		char word[PATH_MAX], *next_word;
 		char *cloud_setting, *b, *nvp, *nv;
 		int type = 0, rule = 0, enable = 0;
@@ -2032,7 +2013,7 @@ _dprintf("%s: cmd=%s.\n", __FUNCTION__, cmd);
 
 	xstart("nmbd", "-D", "-s", "/etc/smb.conf");
 
-#if defined(RTCONFIG_TFAT) || defined(RTCONFIG_TUXERA_NTFS) || defined(RTCONFIG_TUXERA_HFS) || defined(RTCONFIG_EXFAT)
+#if defined(RTCONFIG_TFAT) || defined(RTCONFIG_TUXERA_NTFS) || defined(RTCONFIG_TUXERA_HFS)
 	if(nvram_get_int("enable_samba_tuxera") == 1)
 		snprintf(smbd_cmd, 32, "%s/smbd", "/usr/bin");
 	else

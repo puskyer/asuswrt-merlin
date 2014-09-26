@@ -1,5 +1,5 @@
-Asuswrt-Merlin - build 376.46 (26-Aug-2014)
-===========================================
+Asuswrt-Merlin - build 376.47 (20-Sept-2014)
+============================================
 
 About
 -----
@@ -49,17 +49,19 @@ Here is a list of features that Asuswrt-merlin brings over the original
 firmware:
 
 System:
-   - Based on 3.0.0.4.376_2061 sources (from RT-AC87U) from Asus
+   - Based on 3.0.0.4.376_2678 sources (from RT-AC87U) from Asus
    - Various bugfixes and optimizations
    - Some components were updated to newer versions, for improved
      stability and security
    - User scripts that run on specific events
    - Cron jobs
    - Ability to customize the config files used by the router services
-   - LED control - put your Dark Knight in Stealth Mode by turning off 
+   - LED control - put your router in "Stealth Mode" by turning off 
      all LEDs
    - Entware easy setup script (alternative to Optware - the two are 
      mutually exclusive) (not available on RT-AC56/RT-AC68/RT-AC87)
+   - Experimental SNMP support (from Asus)
+
 
 Disk sharing:
    - Enable/disable the use of shorter share names
@@ -567,6 +569,39 @@ https://github.com/RMerl/asuswrt-merlin
 
 History
 -------
+376.47 (20-Sept-2014)
+   - NEW: Added sha256 and sha512 HMAC support to dropbear (SSH)
+   - CHANGED: Moved OpenVPN postconf scripts right before server/client
+              gets started, so you can also use them to modify the other 
+              generated files such as the exported ovpn config file.
+  - FIXED: SSHD options visibility (patch by pinwing)
+  - FIXED: EMF/IGMP settings were reverting to the select profile
+           default (Asus bug introduced in GPL 2678)
+  - FIXED: PPTP account list failed to display (regression in Beta 1)
+  - FIXED: VPN server page was switching back to PPTP when changing
+           OpenVPN unit and you were initially on the PPTP page
+  - FIXED: Activity indicator wasn't shown during a networkmap
+           scan
+
+
+376.47 Beta 1 (14-Sept-2014)
+   - NEW: Merged with Asus GPL 2678 (AC87)
+   - NEW: Report Quantenna FW version on Sysinfo page
+   - NEW: Enabled experimental FTP and Samba Cloud Sync support in AiCloud.
+          This feature is still in development by Asus, so it might not be
+          fully functional yet.
+   - NEW: Enabled experimental SNMPD support, under Administration -> SNMP.
+          This feature is still in development by Asus, so it might not be
+          fully functional yet. (not available on the RT-N16)
+   - NEW: Added option to enable WAN access to SNMPD, defaults to disabled.
+          (Asus's implementation has it open to the WAN by default)
+   - CHANGED: Re-increased max allowed FTP user limit to 10 (was reverted
+              to 5 in the GPL merge when the setting was moved to the
+              FTP page)
+   - FIXED: PPTPD was getting enabled every time you clicked Apply while on 
+            the PPTPD VPN Server page
+
+
 376.46 (26-Aug-2014)
    - NEW: Merged with Asus GPL 2061.  This is essentially
           the new QTN driver for the AC87.
