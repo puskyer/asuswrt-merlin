@@ -1059,6 +1059,7 @@ void repeater_nat_setting(){
 void nat_setting(char *wan_if, char *wan_ip, char *wanx_if, char *wanx_ip, char *lan_if, char *lan_ip, char *logaccept, char *logdrop)	// oleg patch
 {
 	FILE *fp;		// oleg patch
+	char lan_class[32];     // oleg patch
 	int wan_port;
 	char dstips[64];
 	char *proto, *protono, *port, *lport, *dstip, *desc;
@@ -1273,9 +1274,9 @@ void nat_setting(char *wan_if, char *wan_ip, char *wanx_if, char *wanx_ip, char 
 			fprintf(fp, "-A POSTROUTING %s -o %s ! -s %s -j MASQUERADE\n", p, wanx_if, wanx_ip);
 
 		/* masquerade lan to lan */
-		fprintf(fp, "-A POSTROUTING %s -m mark --mark 0xd001 -j MASQUERADE\n" , p);
-//		ip2class(lan_ip, nvram_safe_get("lan_netmask"), lan_class);
-//		fprintf(fp, "-A POSTROUTING %s -o %s -s %s -d %s -j MASQUERADE\n", p, lan_if, lan_class, lan_class);
+//		fprintf(fp, "-A POSTROUTING %s -m mark --mark 0xd001 -j MASQUERADE\n" , p);
+		ip2class(lan_ip, nvram_safe_get("lan_netmask"), lan_class);
+		fprintf(fp, "-A POSTROUTING %s -o %s -s %s -d %s -j MASQUERADE\n", p, lan_if, lan_class, lan_class);
 	}
 
 	fprintf(fp, "COMMIT\n");
@@ -1297,6 +1298,7 @@ void nat_setting(char *wan_if, char *wan_ip, char *wanx_if, char *wanx_ip, char 
 void nat_setting2(char *lan_if, char *lan_ip, char *logaccept, char *logdrop)	// oleg patch
 {
 	FILE *fp = NULL;	// oleg patch
+	char lan_class[32];     // oleg patch
 	int wan_port;
 	char dstips[64];
 	char *proto, *protono, *port, *lport, *dstip, *desc;
@@ -1573,10 +1575,10 @@ void nat_setting2(char *lan_if, char *lan_ip, char *logaccept, char *logdrop)	//
 
 		// masquerade lan to lan
 
- 		fprintf(fp, "-A POSTROUTING %s -m mark --mark 0xd001 -j MASQUERADE\n", p);
+// 		fprintf(fp, "-A POSTROUTING %s -m mark --mark 0xd001 -j MASQUERADE\n", p);
 
-//		ip2class(lan_ip, nvram_safe_get("lan_netmask"), lan_class);
-//		fprintf(fp, "-A POSTROUTING %s -o %s -s %s -d %s -j MASQUERADE\n", p, lan_if, lan_class, lan_class);
+		ip2class(lan_ip, nvram_safe_get("lan_netmask"), lan_class);
+		fprintf(fp, "-A POSTROUTING %s -o %s -s %s -d %s -j MASQUERADE\n", p, lan_if, lan_class, lan_class);
 	}
 
 	fprintf(fp, "COMMIT\n");
@@ -2388,7 +2390,6 @@ TRACE_PT("writing Parental Control\n");
 		fprintf(fp, "-A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu\n");
 		if (strlen(macaccept)>0)
 			fprintf(fp, "-A %s -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu\n", macaccept);
-
 #ifdef RTCONFIG_IPV6
 		switch (get_ipv6_service()) {
 		case IPV6_6IN4:
@@ -2413,7 +2414,6 @@ TRACE_PT("writing Parental Control\n");
 	fprintf(fp, "-A FORWARD -o %s ! -i %s -j %s\n", wan_if, lan_if, logdrop);
 #ifdef RTCONFIG_IPV6
 	if (ipv6_enabled() && *wan6face) {
-
 		if (nvram_match("ipv6_fw_enable", "1")) {
 			fprintf(fp_ipv6, "-A FORWARD -o %s -i %s -j %s\n", wan6face, lan_if, logaccept);
 		} else {	// The default DROP rule from the IPv6 firewall would take care of it
@@ -2522,36 +2522,29 @@ TRACE_PT("writing Parental Control\n");
 
 
 		fprintf(fp_ipv6, "-A OUTPUT -m rt --rt-type 0 -j %s\n", logdrop);
-
 		// IPv6 firewall - allowed traffic
 		if (nvram_match("ipv6_fw_enable", "1")) {
-
 			nvp = nv = strdup(nvram_safe_get("ipv6_fw_rulelist"));
 			while (nv && (b = strsep(&nvp, "<")) != NULL) {
 				char *portv, *portp, *port, *desc, *dstports;
 				char srciprule[64];
-
 				if ((vstrsep(b, ">", &desc, &srcip, &dstip, &port, &proto) != 5))
 					continue;
-
 				if (srcip[0] != '\0')
 					snprintf(srciprule, sizeof(srciprule), "-s %s", srcip);
 				else
 					srciprule[0] = '\0';
-
 				portp = portv = strdup(port);
 				while (portv && (dstports = strsep(&portp, ",")) != NULL) {
 					if (strcmp(proto, "TCP") == 0 || strcmp(proto, "BOTH") == 0)
 						fprintf(fp_ipv6, "-A FORWARD -m state --state NEW -p tcp -m tcp %s -d %s --dport %s -j %s\n", srciprule, dstip, dstports, logaccept);
 					if (strcmp(proto, "UDP") == 0 || strcmp(proto, "BOTH") == 0)
 						fprintf(fp_ipv6, "-A FORWARD -m state --state NEW -p udp -m udp %s -d %s --dport %s -j %s\n", srciprule, dstip, dstports, logaccept);
-
 					// Handle raw protocol in port field, no val1:val2 allowed
 					if (strcmp(proto, "OTHER") == 0) {
 						protono = strsep(&dstports, ":");
 						fprintf(fp_ipv6, "-A FORWARD -p %s %s -d %s -j %s\n", protono, srciprule, dstip, logaccept);
 					}
-
 				}
 				free(portv);
 			}
@@ -3242,7 +3235,11 @@ TRACE_PT("writing Parental Control\n");
 		{
 			fprintf(fp, "-A INPUT -p tcp -m tcp -d %s --dport %s -j %s\n", lan_ip, nvram_safe_get("lan_port"), logaccept);
 #ifdef RTCONFIG_HTTPS
+#ifdef RTCONFIG_TMOBILE
+			fprintf(fp, "-A INPUT -p tcp -m tcp -d %s --dport %s -j %s\n", lan_ip, "443", logaccept);
+#else
 			fprintf(fp, "-A INPUT -p tcp -m tcp -d %s --dport %s -j %s\n", lan_ip, nvram_safe_get("https_lanport"), logaccept);
+#endif
 #endif
 		}
 
@@ -3388,7 +3385,6 @@ TRACE_PT("writing Parental Control\n");
 			fprintf(fp, "-A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu\n");
 			if(strlen(macaccept) > 0)
 				fprintf(fp, "-A %s -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu\n", macaccept);
-
 #ifdef RTCONFIG_IPV6
 			switch(get_ipv6_service()){
 				case IPV6_6IN4:
@@ -3425,13 +3421,13 @@ TRACE_PT("writing Parental Control\n");
 		/* Filter out invalid WAN->WAN connections */
 		fprintf(fp, "-A FORWARD -o %s ! -i %s -j %s\n", wan_if, lan_if, logdrop);
 #ifdef RTCONFIG_IPV6
-	 if (ipv6_enabled() && *wan6face) {
-		if (nvram_match("ipv6_fw_enable", "1")) {
-			fprintf(fp_ipv6, "-A FORWARD -o %s -i %s -j %s\n", wan6face, lan_if, logaccept);
-		} else {        // The default DROP rule from the IPv6 firewall would take care of it
-			fprintf(fp_ipv6, "-A FORWARD -o %s ! -i %s -j %s\n", wan6face, lan_if, logdrop);
+		if (ipv6_enabled() && *wan6face) {
+			if (nvram_match("ipv6_fw_enable", "1")) {
+				fprintf(fp_ipv6, "-A FORWARD -o %s -i %s -j %s\n", wan6face, lan_if, logaccept);
+			} else {        // The default DROP rule from the IPv6 firewall would take care of it
+				fprintf(fp_ipv6, "-A FORWARD -o %s ! -i %s -j %s\n", wan6face, lan_if, logdrop);
+			}
 		}
-	}
 #endif
 		if (strcmp(wanx_if, wan_if) && inet_addr_(wanx_ip) && dualwan_unit__nonusbif(unit))
 			fprintf(fp, "-A FORWARD -o %s ! -i %s -j %s\n", wanx_if, lan_if, logdrop);
@@ -3527,31 +3523,24 @@ TRACE_PT("writing Parental Control\n");
 
 
 		fprintf(fp_ipv6, "-A OUTPUT -m rt --rt-type 0 -j %s\n", logdrop);
-
 		// IPv6 firewall allowed traffic
 		if (nvram_match("ipv6_fw_enable", "1")) {
-
 			nvp = nv = strdup(nvram_safe_get("ipv6_fw_rulelist"));
 			while (nv && (b = strsep(&nvp, "<")) != NULL) {
 				char *portv, *portp, *port, *desc, *dstports;
 				char srciprule[64];
-
 				if ((vstrsep(b, ">", &desc, &srcip, &dstip, &port, &proto) != 5))
 					continue;
-
 				if (srcip[0] != '\0')
 					snprintf(srciprule, sizeof(srciprule), "-s %s", srcip);
 				else
 					srciprule[0] = '\0';
-
 				portp = portv = strdup(port);
 				while (portv && (dstports = strsep(&portp, ",")) != NULL) {
 					if (strcmp(proto, "TCP") == 0 || strcmp(proto, "BOTH") == 0)
-						fprintf(fp_ipv6, "-A FORWARD -m state --state NEW -p tcp -m tcp %s -d %s --dport %s -j %s\n",
-							srciprule, dstip, dstports, logaccept);
+						fprintf(fp_ipv6, "-A FORWARD -m state --state NEW -p tcp -m tcp %s -d %s --dport %s -j %s\n", srciprule, dstip, dstports, logaccept);
 					if (strcmp(proto, "UDP") == 0 || strcmp(proto, "BOTH") == 0)
-						fprintf(fp_ipv6, "-A FORWARD -m state --state NEW -p udp -m udp %s -d %s --dport %s -j %s\n",
-							srciprule, dstip, dstports, logaccept);
+						fprintf(fp_ipv6, "-A FORWARD -m state --state NEW -p udp -m udp %s -d %s --dport %s -j %s\n", srciprule, dstip, dstports, logaccept);
 					// Handle raw protocol in port field, no val1:val2 allowed
 					if (strcmp(proto, "OTHER") == 0) {
 						protono = strsep(&dstports, ":");
@@ -3561,7 +3550,6 @@ TRACE_PT("writing Parental Control\n");
 				free(portv);
 			}
 		}
-
 	}
 #endif
 
@@ -3718,7 +3706,6 @@ TRACE_PT("writing Parental Control\n");
 						fprintf(fp, "-A %s %s -i %s -o %s -p icmp --icmp-type %s -j %s\n", chain, g, lan_if, wan_if, ptr, ftype);
 					}
 				}
-
 			}
 
 #ifdef RTCONFIG_IPV6
@@ -4182,8 +4169,8 @@ mangle_setting(char *wan_if, char *wan_ip, char *lan_if, char *lan_ip, char *log
 #endif
 
 /* For NAT loopback */
-	eval("iptables", "-t", "mangle", "-A", "PREROUTING", "!", "-i", wan_if,
-	     "-d", wan_ip, "-j", "MARK", "--set-mark", "0xd001");
+//	eval("iptables", "-t", "mangle", "-A", "PREROUTING", "!", "-i", wan_if,
+//	     "-d", wan_ip, "-j", "MARK", "--set-mark", "0xd001");
 
 /* Workaround for neighbour solicitation flood from Comcast */
 #ifdef RTCONFIG_IPV6
@@ -4215,7 +4202,6 @@ mangle_setting(char *wan_if, char *wan_ip, char *lan_if, char *lan_ip, char *log
 			     "-p", "tcp", "--dport", "80",
 			     "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
 		}
-#if 0  // New NAT loopback code already marked it, so no longer needed
 		/* mark VTS loopback connections */
 		if (nvram_match("vts_enable_x", "1")||!nvram_match("dmz_ip", "")) {
 			char lan_class[32];
@@ -4225,7 +4211,6 @@ mangle_setting(char *wan_if, char *wan_ip, char *lan_if, char *lan_ip, char *log
 			     "-o", lan_if, "-s", lan_class, "-d", lan_class,
 			     "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
 		}
-#endif
 #ifdef RTCONFIG_BCMARM
 		/* mark STUN connection*/
 		if (nvram_match("fw_pt_stun", "1")) {
@@ -4253,15 +4238,6 @@ mangle_setting(char *wan_if, char *wan_ip, char *lan_if, char *lan_ip, char *log
                              "-p", "tcp",
                              "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
                 }
-#endif
-
-#if defined(RTCONFIG_PPTPD) || defined(RTCONFIG_ACCEL_PPTPD)
-		//Set mark if ppp connection without encryption
-		if( nvram_match("pptpd_enable", "1") && (nvram_get_int("pptpd_mppe")>7) ) {
-			eval("iptables", "-t", "mangle", "-A", "FORWARD",
-			     "-p", "tcp",
-			     "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
-		}
 #endif
 	}
 #endif
@@ -4350,35 +4326,45 @@ mangle_setting2(char *lan_if, char *lan_ip, char *logaccept, char *logdrop)
 		if (nvram_match("url_enable_x", "1") || nvram_match("keyword_enable_x", "1")) {
 			eval("iptables", "-t", "mangle", "-A", "FORWARD",
 			     "-p", "tcp", "--dport", "80",
-			     "-m", "state", "--state NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
+			     "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
 		}
 
-#if 0	// New NAT loopback code already marked it, so no longer needed
 		/* mark VTS loopback connections */
-		if (nvram_match("vts_enable_x", "1")) {
+		if (nvram_match("vts_enable_x", "1")||!nvram_match("dmz_ip", "")) {
 			char lan_class[32];
 
 			ip2class(lan_ip, nvram_safe_get("lan_netmask"), lan_class);
 			eval("iptables", "-t", "mangle", "-A", "FORWARD",
 			     "-o", lan_if, "-s", lan_class, "-d", lan_class,
-			     "-m", "state", "--state NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
+			     "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
 		}
-#endif
-
 #ifdef RTCONFIG_BCMARM
-                /* mark STUN connection*/
-                if (nvram_match("fw_pt_stun", "1")) {
-                        eval("iptables", "-t", "mangle", "-A", "FORWARD",
-                             "-p", "udp",
-                             "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
-                }
-
-#ifdef RTCONFIG_IPV6
-		if (get_ipv6_service() == IPV6_6IN4) {
-			eval("ip6tables", "-t", "mangle", "-A", "FORWARD",
+		/* mark STUN connection*/
+		if (nvram_match("fw_pt_stun", "1")) {
+			eval("iptables", "-t", "mangle", "-A", "FORWARD",
+			     "-p", "udp",
 			     "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
 		}
 #endif
+#ifdef RTCONFIG_IPV6
+		if (get_ipv6_service() == IPV6_6IN4) {
+#ifdef RTCONFIG_BCMARM
+			eval("ip6tables", "-t", "mangle", "-A", "FORWARD",
+			     "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
+#else
+			eval("ip6tables", "-t", "mangle", "-A", "FORWARD",
+			     "-m", "state", "--state", "NEW", "-j", "SKIPLOG");
+#endif
+		}
+#endif
+
+#if defined(RTCONFIG_PPTPD) || defined(RTCONFIG_ACCEL_PPTPD)
+		//Set mark if ppp connection without encryption
+		if( nvram_match("pptpd_enable", "1") && (nvram_get_int("pptpd_mppe")>7) ) {
+			eval("iptables", "-t", "mangle", "-A", "FORWARD",
+			     "-p", "tcp",
+			     "-m", "state", "--state", "NEW", "-j", "MARK", "--set-mark", "0x01/0x7");
+		}
 #endif
 	}
 #endif
@@ -4390,76 +4376,76 @@ mangle_setting2(char *lan_if, char *lan_ip, char *logaccept, char *logdrop)
 void
 del_samba_rules(void)
 {
-        char ifname[IFNAMSIZ];
+	char ifname[IFNAMSIZ];
 	char *lan_ip = nvram_safe_get("lan_ipaddr");
 
-        strncpy(ifname, nvram_safe_get("lan_ifname"), IFNAMSIZ);
+	strncpy(ifname, nvram_safe_get("lan_ifname"), IFNAMSIZ);
 
-        /* delete existed rules */
-        eval("iptables", "-t", "raw", "-D", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "tcp",
-                "--dport", "137:139", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-D", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "tcp",
-                "--dport", "445", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-D", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "udp",
-                "--dport", "137:139", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-D", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "udp",
-                "--dport", "445", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-D", "OUTPUT", "-p", "tcp",
-                "--sport", "137:139", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-D", "OUTPUT", "-p", "tcp",
-                "--sport", "445", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-D", "OUTPUT", "-p", "udp",
-                "--sport", "137:139", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-D", "OUTPUT", "-p", "udp",
-                "--sport", "445", "-j", "NOTRACK");
+	/* delete existed rules */
+	eval("iptables", "-t", "raw", "-D", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "tcp",
+		"--dport", "137:139", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-D", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "tcp",
+		"--dport", "445", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-D", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "udp",
+		"--dport", "137:139", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-D", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "udp",
+		"--dport", "445", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-D", "OUTPUT", "-p", "tcp",
+		"--sport", "137:139", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-D", "OUTPUT", "-p", "tcp",
+		"--sport", "445", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-D", "OUTPUT", "-p", "udp",
+		"--sport", "137:139", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-D", "OUTPUT", "-p", "udp",
+		"--sport", "445", "-j", "NOTRACK");
 
 /*
-        eval("iptables", "-t", "filter", "-D", "INPUT", "-i", ifname, "-p", "udp",
-                "--dport", "137:139", "-j", "ACCEPT");
-        eval("iptables", "-t", "filter", "-D", "INPUT", "-i", ifname, "-p", "udp",
-                "--dport", "445", "-j", "ACCEPT");
-        eval("iptables", "-t", "filter", "-D", "INPUT", "-i", ifname, "-p", "tcp",
-                "--dport", "137:139", "-j", "ACCEPT");
-        eval("iptables", "-t", "filter", "-D", "INPUT", "-i", ifname, "-p", "tcp",
-                "--dport", "445", "-j", "ACCEPT");
+	eval("iptables", "-t", "filter", "-D", "INPUT", "-i", ifname, "-p", "udp",
+		"--dport", "137:139", "-j", "ACCEPT");
+	eval("iptables", "-t", "filter", "-D", "INPUT", "-i", ifname, "-p", "udp",
+		"--dport", "445", "-j", "ACCEPT");
+	eval("iptables", "-t", "filter", "-D", "INPUT", "-i", ifname, "-p", "tcp",
+		"--dport", "137:139", "-j", "ACCEPT");
+	eval("iptables", "-t", "filter", "-D", "INPUT", "-i", ifname, "-p", "tcp",
+		"--dport", "445", "-j", "ACCEPT");
 */
 }
 
 add_samba_rules(void)
 {
-        char ifname[IFNAMSIZ];
+	char ifname[IFNAMSIZ];
 	char *lan_ip = nvram_safe_get("lan_ipaddr");
 
-        strncpy(ifname, nvram_safe_get("lan_ifname"), IFNAMSIZ);
+	strncpy(ifname, nvram_safe_get("lan_ifname"), IFNAMSIZ);
 
-        /* Add rules to disable conntrack on SMB ports to reduce CPU loading
+	/* Add rules to disable conntrack on SMB ports to reduce CPU loading
 	 * for SAMBA storage application
 	 */
-        eval("iptables", "-t", "raw", "-A", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "tcp",
-                "--dport", "137:139", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-A", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "tcp",
-                "--dport", "445", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-A", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "udp",
-                "--dport", "137:139", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-A", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "udp",
-                "--dport", "445", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-A", "OUTPUT", "-p", "tcp",
-                "--sport", "137:139", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-A", "OUTPUT", "-p", "tcp",
-                "--sport", "445", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-A", "OUTPUT", "-p", "udp",
-                "--sport", "137:139", "-j", "NOTRACK");
-        eval("iptables", "-t", "raw", "-A", "OUTPUT", "-p", "udp",
-                "--sport", "445", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-A", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "tcp",
+		"--dport", "137:139", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-A", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "tcp",
+		"--dport", "445", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-A", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "udp",
+		"--dport", "137:139", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-A", "PREROUTING", "-i", ifname, "-d", lan_ip, "-p", "udp",
+		"--dport", "445", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-A", "OUTPUT", "-p", "tcp",
+		"--sport", "137:139", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-A", "OUTPUT", "-p", "tcp",
+		"--sport", "445", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-A", "OUTPUT", "-p", "udp",
+		"--sport", "137:139", "-j", "NOTRACK");
+	eval("iptables", "-t", "raw", "-A", "OUTPUT", "-p", "udp",
+		"--sport", "445", "-j", "NOTRACK");
 
 /*
-        eval("iptables", "-t", "filter", "-I", "INPUT", "-i", ifname, "-p", "udp",
-                "--dport", "137:139", "-j", "ACCEPT");
-        eval("iptables", "-t", "filter", "-I", "INPUT", "-i", ifname, "-p", "udp",
-                "--dport", "445", "-j", "ACCEPT");
-        eval("iptables", "-t", "filter", "-I", "INPUT", "-i", ifname, "-p", "tcp",
-                "--dport", "137:139", "-j", "ACCEPT");
-        eval("iptables", "-t", "filter", "-I", "INPUT", "-i", ifname, "-p", "tcp",
+	eval("iptables", "-t", "filter", "-I", "INPUT", "-i", ifname, "-p", "udp",
+		"--dport", "137:139", "-j", "ACCEPT");
+	eval("iptables", "-t", "filter", "-I", "INPUT", "-i", ifname, "-p", "udp",
+		"--dport", "445", "-j", "ACCEPT");
+	eval("iptables", "-t", "filter", "-I", "INPUT", "-i", ifname, "-p", "tcp",
+		"--dport", "137:139", "-j", "ACCEPT");
+	eval("iptables", "-t", "filter", "-I", "INPUT", "-i", ifname, "-p", "tcp",
 		"--dport", "445", "-j", "ACCEPT");
 */
 }
@@ -4794,11 +4780,6 @@ int start_firewall(int wanunit, int lanunit)
 
 #ifdef RTCONFIG_OPENVPN
 	run_vpn_firewall_scripts();
-#endif
-#if 0	// Makes no measurable difference, and creates other issues
-#ifdef RTCONFIG_BCMARM
-	if (pids("smbd")) add_samba_rules();
-#endif
 #endif
 
 	run_custom_script("firewall-start", wan_if);
