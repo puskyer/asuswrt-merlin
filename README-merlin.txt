@@ -1,5 +1,5 @@
-Asuswrt-Merlin - build 376.48 (xx-xxx-2014)
-===========================================
+Asuswrt-Merlin - build 376.48_2 (08-Nov-2014)
+=============================================
 
 About
 -----
@@ -35,6 +35,7 @@ Supported devices are:
  * RT-AC66U
  * RT-AC56U
  * RT-AC68U
+ * RT-AC68P
  * RT-AC87U
 
 NOTE: all the "R" versions (for example RT-N66R) are the same as their 
@@ -60,7 +61,7 @@ System:
      all LEDs
    - Entware easy setup script (alternative to Optware - the two are 
      mutually exclusive) (not available on RT-AC56/RT-AC68/RT-AC87)
-   - Experimental SNMP support (from Asus)
+   - Full SNMP support (based on experimental code from Asus)
 
 
 Disk sharing:
@@ -69,6 +70,8 @@ Disk sharing:
    - NFS sharing (through webui)
    - Improved compatibility with 3TB+ and Advanced Format HDDs
    - Allow or disable WAN access to the FTP server
+   - Updated Samba version (3.6.x)
+
 
 Networking:
    - Force acting as a Master Browser
@@ -78,8 +81,6 @@ Networking:
    - CIFS client support (for mounting remote SMB share on the router)
    - Layer7 iptables matching (N16/N66/AC66 only)
    - User-defined options for WAN DHCP queries (required by some ISPs)
-   - Improved NAT loopback (based on code from phuzi0n from the DD-WRT 
-     forums)
    - Advanced OpenVPN client and server support (all models except 
      RT-N16)
    - Netfilter ipset module, for efficient blacklist implementation
@@ -571,22 +572,85 @@ https://github.com/RMerl/asuswrt-merlin
 
 History
 -------
-376.48 (xx-xxxx-2014)
+376.48_2 (8-Nov-2014)
+   - FIXED: Samba would fail to start on the RT-N16 due to a
+            missing library.
+
+
+376.48_1 (7-Nov-2014)
+   - FIXED: Max-lease calculation Asus introduced in 376_2769 is
+            broken - re-hardcode it to 253 like they used to do in
+            previous release.  Will be properly fixed once they
+            release a newer GPL with this issue resolved.
+            (Asus bug)
+
+376.48 (7-Nov-2014)
+   - NEW: Added the RT-AC68P to the list of supported devices
+   - CHANGED: Use sha256 checksums instead of MD5 for improved
+              security when validating your downloads.
+              (note: checksums are also posted on the support
+              forum at SmallNetBuilder)
+   - CHANGED: Switched my fix for unmounted/hidden partition
+              support with Asus's own fix from GPL 3561.
+   - FIXED: Samba would fail to start if the router admin username contained
+            upper case characters.  Samba was modified to have it try to
+            local the UNIX user as provided (it was previously only
+            trying upper and lower case versions) (Samba 3.6 bug)
+
+
+376.48 Beta 3 (02-Nov-2014)
+   - CHANGED: Updated miniupnpd to release 1.9 (plus upstream PCP fix)
+   - FIXED: Couldn't edit share permissions for Samba if your disk
+            contained an unmounted/hidden partition (Asus bug in 2769)
+   - FIXED: Couldn't edit share permissions for Samba for the RT-N66U
+            internal SDcard reader (Asus bug in 2769)
+   - FIXED: Missing Max User field to Samba page (Asus bug)
+
+
+376.48 Beta 2 (26-Oct-2014)
+   - NEW: Added logo to the webui header
+   - CHANGED: Samba 3.6 will now use libiconv to handle
+              charset conversion (will resolve CP850
+              warnings amongst other things)
+  - CHANGED: Updated miniupnpd to 20141023 code from Github.
+  - CHANGED: Updated dropbear to 2014.66.
+  - CHANGED: Reverted NTP update code to GPL 2678 in hopes of
+             resolving the few cases where it didn't work anymore.
+  - FIXED: minidlna is once again able to use inotify for updates.
+           A temporary workaround has been implemented where
+           minidlna will be staticly linked with a threadsafe
+           build of sqlite3, while BWDPI will continue to use
+           the shared non-threadsafe library. (Asus bug)
+
+
+376.48 Beta 1 (18-Oct-2014)
    - NEW: Merged with Asus 376_2769 AC87 GPL
    - NEW: Enabled numerous modules in net-snmp (based on the list
           used by OpenWRT)
    - NEW: Added postconf and custom config support for snmpd.conf
    - NEW: Added HID support to ARM kernel (AC56,AC68,AC87)
-   - FIXED: minidlna didn't support inotify-based updates due to Asus
-            disabling threadsafe support in sqlite3.  I suspect this 
-            might cause the TrendMicro DPI engine to lose some performance
-            since it also uses sqlite (I assume that was the reason
-            why Asus disabled it in the first place) (Asus bug)
+   - CHANGED: Reverted NAT loopback code to Asus's, since our own
+              code is currently broken by recent FW code changes.
+   - CHANGED: Updated openssl to 1.0.0o, resolving a few security issues.
+   - CHANGED: Disabled SSLv2 and SSLv3 support for https access to the
+              router webui.  IE6 users, your time is up - upgrade.
+              TLS 1.0 is now the only supported protocol.
+   - CHANGED: upgraded main Samba server from 3.0.x to 3.6.24.  This might
+              cause a slight drop in performance, but should improve
+              both reliability and security.
    - FIXED: DNSFilter client list dropdown would sometime be empty.
    - FIXED: DNS queries run on the router were forwarded to upstream
-            nameservers instead of dnsmasq
+            nameservers instead of the local dnsmasq
    - FIXED: Re-added the USB HID kernel module needed for UPS monitoring
             (patch by ryzhov_al)
+   - FIXED: Incorrect top margin on some pages such as AiCloud, and
+            stretched font on the progress splash (Asus bug)
+   - FIXED: URL and keyword filtering wasn't working under certain
+            situations when CTF was enabled
+   - FIXED: Mac Filtering wasn't working with Guest networks
+            (Asus bug) (Patch by saintdev)
+   - FIXED: Chosing a client on the MAC Filter page wasn't properly
+            filling the Name field.  Also reorganized layout a bit.
 
 
 376.47 (20-Sept-2014)
